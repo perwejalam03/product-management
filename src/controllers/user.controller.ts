@@ -4,6 +4,7 @@ import { CreateUserDTO, LoginUserDTO, VerifyEmailDTO } from '../types/user';
 import jwt from 'jsonwebtoken';
 import logger from '../utils/logger';
 import { sendVerificationEmail } from '../utils/email';
+import { messages } from '../config/messages';
 
 const C = "UserController";
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -19,11 +20,11 @@ export class UserController {
       if (existingUser) {
         if (existingUser.is_verified) {
           logger.warn(`[${C}], [${F}], Email already verified and registered [${userData.email}]`);
-          res.status(400).json({ error: 'Email already registered' });
+          res.status(400).json({ error: messages.EMAIL_ALREADY_EXISTS });
           return;
         } else {
           // User exists but not verified, update the verification code and expiry
-          const updatedUser = await UserModel.updateUnverifiedUser(userData.email);
+          const updatedUser = await UserModel.updateUnverifiedUser(userData.email, userData.password, userData.username);
           if (!updatedUser) {
             logger.error(`[${C}], [${F}], Failed to update unverified user [${userData.email}]`);
             res.status(500).json({ error: 'Failed to update user' });
@@ -39,7 +40,7 @@ export class UserController {
           }
 
           res.status(200).json({ 
-            message: 'Registration successfull. Please check your email for a verification code.',
+            message: messages.REGISTER_SUCCESS,
             user: { 
               id: updatedUser.id, 
               username: updatedUser.username, 
@@ -62,7 +63,7 @@ export class UserController {
       }
 
       res.status(201).json({ 
-        message: 'Registration successful. Please check your email for verification code.',
+        message: messages.REGISTER_SUCCESS,
         user: { 
           id: user.id, 
           username: user.username, 
@@ -86,11 +87,11 @@ export class UserController {
       
       if (!verified) {
         logger.warn(`[${C}], [${F}], Invalid or expired verification code for email [${email}]`);
-        res.status(400).json({ error: 'Invalid or expired verification code' });
+        res.status(400).json({ error: messages.VERIFY_EMAIL_FAILED });
         return;
       }
 
-      res.json({ message: 'Email verified successfully' });
+      res.json({ message: messages.VERIFY_EMAIL_SUCCESS });
     } catch (error) {
       logger.error(`[${C}], [${F}], Error [${(error as Error).message}]`);
       next(error);
@@ -107,13 +108,13 @@ export class UserController {
 
       if (!user || !(await UserModel.verifyPassword(user, password))) {
         logger.warn(`[${C}], [${F}], Invalid credentials for email [${email}]`);
-        res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ error: messages.INVALID_CREDENTIALS });
         return;
       }
 
       if (!user.is_verified) {
         logger.warn(`[${C}], [${F}], Unverified email attempt to login [${email}]`);
-        res.status(403).json({ error: 'Please verify your email before logging in' });
+        res.status(403).json({ error: messages.EMAIL_UNVERIFIED });
         return;
       }
 
@@ -145,7 +146,7 @@ export class UserController {
 
       if (!user) {
         logger.warn(`[${C}], [${F}], User not found for UserId [${userId}]`);
-        res.status(404).json({ error: 'User not found' });
+        res.status(404).json({ error: messages.USER_NOT_FOUND });
         return;
       }
 
