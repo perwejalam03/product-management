@@ -55,6 +55,31 @@ export class UserModel {
     } as User;
   }
 
+  static async updateUnverifiedUser(email: string): Promise<User | null> {
+    const F = "updateUnverifiedUser";
+    logger.info(`[${C}], [${F}], Updating unverified user with email [${email}]`);
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationExpiry = new Date(Date.now() + 15 * 60000); // 15 minutes
+
+    const [result] = await pool.query<ResultSetHeader>(
+      'UPDATE users SET verification_code = ?, verification_expiry = ? WHERE email = ? AND is_verified = FALSE',
+      [verificationCode, verificationExpiry, email]
+    );
+
+    if (result.affectedRows === 0) {
+      logger.warn(`[${C}], [${F}], No unverified user found with email [${email}]`);
+      return null;
+    }
+
+    const [updatedUser] = await pool.query<RowDataPacket[]>(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    );
+
+    return updatedUser[0] as User;
+  }
+  
   static async verifyEmail(email: string, code: string): Promise<boolean> {
     const F = "verifyEmail";
     logger.info(`[${C}], [${F}], Verifying email [${email}] with code [${code}]`);
