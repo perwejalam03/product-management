@@ -55,16 +55,18 @@ export class UserModel {
     } as User;
   }
 
-  static async updateUnverifiedUser(email: string): Promise<User | null> {
+  static async updateUnverifiedUser(email: string, password:string, username:string): Promise<User | null> {
     const F = "updateUnverifiedUser";
     logger.info(`[${C}], [${F}], Updating unverified user with email [${email}]`);
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     const verificationExpiry = new Date(Date.now() + 15 * 60000); // 15 minutes
 
     const [result] = await pool.query<ResultSetHeader>(
-      'UPDATE users SET verification_code = ?, verification_expiry = ? WHERE email = ? AND is_verified = FALSE',
-      [verificationCode, verificationExpiry, email]
+      'UPDATE users SET verification_code = ?, verification_expiry = ?, password = ?, username = ? WHERE email = ? AND is_verified = FALSE',
+      [verificationCode, verificationExpiry, hashedPassword, username, email]
     );
 
     if (result.affectedRows === 0) {
