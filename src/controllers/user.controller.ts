@@ -5,8 +5,7 @@ import jwt from 'jsonwebtoken';
 import logger from '../utils/logger';
 import { sendVerificationEmail } from '../utils/email';
 
-const C = 'UserController';
-
+const C = "UserController";
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export class UserController {
@@ -14,22 +13,45 @@ export class UserController {
     const F = "register";
     try {
       const userData: CreateUserDTO = req.body;
-      
-      const isEmailExists = await UserModel.findByEmail(userData.email);
-      if (isEmailExists ) {
-        logger.warn(`[${C}], [${F}], Email already exists [${userData.email}]`);
-        res.status(400).json({ error: 'Email already registered' });
-        return;
-      }
-      const isUsernameExists = await UserModel.findByUsername(userData.username);
-      if (isUsernameExists) {
-        logger.warn(`[${C}], [${F}], Username already exists [${userData.username}]`);
-        res.status(400).json({ error: 'Username already exists' });
-        return;
-      }
-      
-      const user = await UserModel.create(userData);
       logger.info(`[${C}], [${F}], Registering new user with email [${userData.email}]`);
+      
+      const existingUser = await UserModel.findByEmail(userData.email);
+      if (existingUser) {
+        if (existingUser.is_verified) {
+          logger.warn(`[${C}], [${F}], Email already verified and registered [${userData.email}]`);
+          res.status(400).json({ error: 'Email already registered' });
+          return;
+        } else {
+          // User exists but not verified, update the verification code and expiry
+          const updatedUser = await UserModel.updateUnverifiedUser(userData.email);
+          if (!updatedUser) {
+            logger.error(`[${C}], [${F}], Failed to update unverified user [${userData.email}]`);
+            res.status(500).json({ error: 'Failed to update user' });
+            return;
+          }
+          
+          // Send new verification email
+          const emailSent = await sendVerificationEmail(updatedUser.email, updatedUser.verification_code!);
+          if (!emailSent) {
+            logger.error(`[${C}], [${F}], Failed to send verification email to [${updatedUser.email}]`);
+            res.status(500).json({ error: 'Failed to send verification email' });
+            return;
+          }
+
+          res.status(200).json({ 
+            message: 'Registration successfull. Please check your email for a verification code.',
+            user: { 
+              id: updatedUser.id, 
+              username: updatedUser.username, 
+              email: updatedUser.email,
+              is_verified: updatedUser.is_verified
+            }
+          });
+          return;
+        }
+      }
+
+      const user = await UserModel.create(userData);
       
       // Send verification email
       const emailSent = await sendVerificationEmail(user.email, user.verification_code!);
