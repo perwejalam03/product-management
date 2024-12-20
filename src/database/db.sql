@@ -2,6 +2,17 @@ CREATE DATABASE IF NOT EXISTS product_db;
 
 USE product_db;
 
+CREATE TABLE IF NOT EXISTS users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  verification_code VARCHAR(6),
+  is_verified BOOLEAN DEFAULT FALSE,
+  verification_expiry TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS products (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
@@ -26,17 +37,6 @@ CREATE TABLE IF NOT EXISTS product_categories (
   PRIMARY KEY (product_id, category_id)
 );
 
-
-CREATE TABLE IF NOT EXISTS users (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  username VARCHAR(255) NOT NULL UNIQUE,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  verification_code VARCHAR(6),
-  is_verified BOOLEAN DEFAULT FALSE,
-  verification_expiry TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 
 CREATE TABLE IF NOT EXISTS purchases (
