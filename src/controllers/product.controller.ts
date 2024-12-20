@@ -3,7 +3,7 @@ import { ProductModel } from '../models/product.model';
 import { CreateProductDTO, UpdateProductDTO } from '../types/product';
 import logger from '../utils/logger';
 
-const C = "Product Controller";
+const C = "ProductController";
 
 export class ProductController {
   static async getAllProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
