@@ -1,8 +1,8 @@
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import bcrypt from 'bcrypt';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import pool from '../config/database';
-import { User, CreateUserDTO } from '../types/user';
-import  logger  from '../utils/logger';
+import { CreateUserDTO, User } from '../types/user';
+import logger from '../utils/logger';
 
 const C = 'UserModel';
 
