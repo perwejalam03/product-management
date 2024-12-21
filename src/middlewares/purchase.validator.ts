@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { purchaseSchema } from '../schemas/purchase.schema';
 
 export const validatePurchase = (req: Request, res: Response, next: NextFunction): void => {
