@@ -33,3 +33,6 @@ npm install -D @types/nodemailer
 
 # To generate random JWT Token
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Install multer
+npm install multer @types/multer
