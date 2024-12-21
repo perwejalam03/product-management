@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-import { userSchema, loginSchema, verificationSchema } from '../schemas/user.schema';
+import { NextFunction, Request, Response } from 'express';
+import { loginSchema, userSchema, verificationSchema } from '../schemas/user.schema';
 import logger from '../utils/logger';
 
 const C = "User Validator";
