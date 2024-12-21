@@ -1,6 +1,6 @@
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import pool from '../config/database';
-import { Purchase, CreatePurchaseDTO } from '../types/purchase';
+import { CreatePurchaseDTO, Purchase } from '../types/purchase';
 import { ProductModel } from './product.model';
 
 export class PurchaseModel {
