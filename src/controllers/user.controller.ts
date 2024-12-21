@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { messages } from '../config/messages';
 import { UserModel } from '../models/user.model';
 import { CreateUserDTO, LoginUserDTO, VerifyEmailDTO } from '../types/user';
-import jwt from 'jsonwebtoken';
-import logger from '../utils/logger';
 import { sendVerificationEmail } from '../utils/email';
-import { messages } from '../config/messages';
+import logger from '../utils/logger';
 
 const C = "UserController";
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
