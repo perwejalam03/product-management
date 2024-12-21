@@ -4,13 +4,24 @@ import userRoutes from './src/routes/user.routes';
 import productRoutes from './src/routes/product.routes';
 import purchaseRoutes from './src/routes/purchase.routes';
 import logger from './src/utils/logger';
+import path from 'path';
+import fs from 'fs';
 
 const C = "App";
 
 const app = express();
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Logging middleware
 app.use((req, res, next) => {
