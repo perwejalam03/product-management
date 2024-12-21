@@ -1,9 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { ProductModel } from '../models/product.model';
 import { CreateProductDTO, UpdateProductDTO } from '../types/product';
 import logger from '../utils/logger';
 
-const C = "ProductController";
+const C = "Product Controller";
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 export class ProductController {
   static async getAllProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -11,6 +12,11 @@ export class ProductController {
     try {
       logger.info(`[${C}], [${F}], Fetching all products`);
       const products = await ProductModel.findAll();
+      products.forEach(product => {
+        if (product.image_filename) {
+          product.image_filename = `${BASE_URL}/uploads/${product.categories}/${product.image_filename}`;
+        }
+      });
       res.json(products);
     } catch (error) {
       logger.error(`[${C}], [${F}], Error [${(error as Error).message}]`);
@@ -25,11 +31,13 @@ export class ProductController {
       logger.info(`[${C}], [${F}], ProductId [${id}]`);
       
       const product = await ProductModel.findById(id);
-      
       if (!product) {
         logger.warn(`[${C}], [${F}], Product not found for ProductId [${id}]`);
         res.status(404).json({ error: 'Product not found' });
         return;
+      }
+      if (product.image_filename) {
+        product.image_filename = `${BASE_URL}/uploads/${product.categories}/${product.image_filename}`;
       }
       
       res.json(product);
@@ -45,7 +53,24 @@ export class ProductController {
       const productData: CreateProductDTO = req.body;
       logger.info(`[${C}], [${F}], Creating product [${productData.name}]`);
       
-      const product = await ProductModel.create(productData);
+      let imageFilename: string | null = null;
+      if (req.file) {
+        const tempPath = req.file.path;
+        logger.info(`[${C}], [${F}], Uploaded file path: [${tempPath}]`);
+        const categoryId = productData.categories && productData.categories.length > 0 ? productData.categories[0] : null;
+        if (categoryId === null) {
+          logger.warn(`[${C}], [${F}], No category provided for new product [${productData.name}]`);
+          throw new Error('At least one category is required for the product');
+        }
+        imageFilename = await ProductModel.moveImage(tempPath, categoryId);
+      } else {
+        logger.warn(`[${C}], [${F}], No image file uploaded for product [${productData.name}]`);
+      }
+
+      const product = await ProductModel.create(productData, imageFilename);
+      if (product.image_filename) {
+        product.image_filename = `${BASE_URL}/uploads/${productData.categories[0]}/${product.image_filename}`;
+      }
       res.status(201).json(product);
     } catch (error) {
       logger.error(`[${C}], [${F}], Error [${(error as Error).message}]`);
@@ -60,12 +85,44 @@ export class ProductController {
       const productData: UpdateProductDTO = req.body;
       logger.info(`[${C}], [${F}], Updating ProductId [${id}]`);
       
-      const product = await ProductModel.update(id, productData);
+      let imageFilename: string | null = null;
+      if (req.file) {
+        const tempPath = req.file.path;
+        logger.info(`[${C}], [${F}], Uploaded file path: [${tempPath}]`);
+        let categoryId: number | null = null;
+        if (productData.categories && productData.categories.length > 0) {
+          categoryId = productData.categories[0];
+        } else {
+          const existingProduct = await ProductModel.findById(id);
+          if (existingProduct && existingProduct.categories && existingProduct.categories.length > 0) {
+            categoryId = existingProduct.categories[0];
+          }
+        }
+        if (categoryId === null) {
+          logger.warn(`[${C}], [${F}], No category found for product [${id}]`);
+          throw new Error('At least one category is required for the product');
+        }
+        imageFilename = await ProductModel.moveImage(tempPath, categoryId);
+      } else {
+        logger.info(`[${C}], [${F}], No new image file uploaded for product [${id}]`);
+      }
+
+      const oldProduct = await ProductModel.findById(id);
+      const product = await ProductModel.update(id, productData, imageFilename);
       
       if (!product) {
         logger.warn(`[${C}], [${F}], Product not found for ProductId [${id}]`);
         res.status(404).json({ error: 'Product not found' });
         return;
+      }
+      
+      if (product.image_filename) {
+        product.image_filename = `${BASE_URL}/uploads/${product.categories}/${product.image_filename}`;
+      }
+
+      // Delete old image if it was replaced
+      if (oldProduct && oldProduct.image_filename && imageFilename) {
+        await ProductModel.deleteImage(oldProduct.image_filename);
       }
       
       res.json(product);
@@ -81,15 +138,24 @@ export class ProductController {
       const id = parseInt(req.params.id);
       logger.info(`[${C}], [${F}], Deleting ProductId [${id}]`);
       
-      const success = await ProductModel.delete(id);
-      
-      if (!success) {
+      const product = await ProductModel.findById(id);
+      if (!product) {
         logger.warn(`[${C}], [${F}], Product not found for ProductId [${id}]`);
         res.status(404).json({ error: 'Product not found' });
         return;
       }
-      
-      res.status(204).send();
+      const success = await ProductModel.delete(id);
+      if (!success) {
+        logger.warn(`[${C}], [${F}], Failed to delete product for ProductId [${id}]`);
+        res.status(500).json({ error: 'Failed to delete product' });
+        return;
+      }
+
+      // Delete associated image
+      if (product.image_filename) {
+        await ProductModel.deleteImage(product.image_filename);
+      }
+      res.status(204).json({ message: 'Product deleted successfully' });
     } catch (error) {
       logger.error(`[${C}], [${F}], Error [${(error as Error).message}]`);
       next(error);
